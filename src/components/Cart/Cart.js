@@ -1,4 +1,4 @@
-import { useContext, useState } from 'react';
+import React, { useContext, useState } from 'react';
 
 import Modal from '../UI/Modal';
 import classes from './Cart.module.css';
@@ -8,6 +8,8 @@ import Checkout from './Checkout';
 
 const Cart = props => {
     const [isCheckout, setIsCheckout] = useState(false);
+    const [isSubmiting, setIsSubmiting] = useState(false);
+    const [didSubmit, setDidSubmit] = useState(false);
     const cartCtx = useContext(CartContext);
 
     const totalAmount = `$${cartCtx.totalAmount.toFixed(2)}`;
@@ -25,14 +27,18 @@ const Cart = props => {
         setIsCheckout(true);
     }
 
-    const submitOrderHandler = (userData) => {
-        fetch('https://meals-http-fc447-default-rtdb.firebaseio.com/orders.json',{
+    const submitOrderHandler = async (userData) => {
+        setIsSubmiting(true);
+        await fetch('https://meals-http-fc447-default-rtdb.firebaseio.com/orders.json', {
             method: 'POST',
             body: JSON.stringify({
                 user: userData,
                 orderedItems: cartCtx.items
             })
         })
+        setIsSubmiting(false);
+        setDidSubmit(true);
+        cartCtx.clearCart();
     }
 
     const cartItems = (
@@ -56,15 +62,37 @@ const Cart = props => {
         </div>
     )
 
+    const cartModalContent = <React.Fragment>
+        {cartItems}
+        <div className={classes.total}>
+            <span>Total Amount</span>
+            <span>{totalAmount}</span>
+        </div>
+        {isCheckout && <Checkout onConfirm={submitOrderHandler} onCancel={props.onClose} />}
+        {!isCheckout && modalActions}
+    </React.Fragment>
+
+    const isSubmitingModalContent = (
+        <div className="d-flex justify-content-center">
+            <p className='text-warning text-uppercase fs-4 fw-bold justify-content-center'>
+                Sending order data...
+            </p>
+        </div>
+    )
+
+    const didSubmitModalContent = (
+        <div className="d-flex justify-content-center">
+            <p className='text-success text-uppercase fs-4 fw-bold justify-content-center'>
+                Seccessfully sent the order!
+            </p>
+        </div>
+    )
+
     return (
         <Modal onClose={props.onClose}>
-            {cartItems}
-            <div className={classes.total}>
-                <span>Total Amount</span>
-                <span>{totalAmount}</span>
-            </div>
-            {isCheckout && <Checkout onConfirm={submitOrderHandler} onCancel={props.onClose} />}
-            {!isCheckout && modalActions}
+            {!isSubmiting && !didSubmit && cartModalContent}
+            {isSubmiting && isSubmitingModalContent}
+            {!isSubmiting && didSubmit && didSubmitModalContent}
         </Modal>
     )
 }
